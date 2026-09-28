@@ -5,68 +5,71 @@
 #include "controller.h"
 
 static const ProtocolConfig BASE_CONFIG = {
-  .ready = true,
-  .bitrate = 500000,
-  .bms = {
-    .id = 0x6B1,
-    .kind = STANDARD,
-    .offset = 2,
-    .width = TWO,
-    .endian = BIG,
-    .multiplier = 1,
-    .divisor = 1,
-    .cartOffset = 5
-  },
-  .inverter = {
-    .id = 0x0A7,
-    .kind = EXTENDED,
-    .offset = 0,
-    .width = TWO,
-    .endian = LITTLE,
-    .multiplier = 1,
-    .divisor = 10,
-    .cartOffset = 0
-  },
-  .minVoltage = 100,             // Lower bound set to 100 V
-  .maxVoltage = 450,             // Upper bound set to 450 V
-  .thresholdPercent = 90,        // 90% target threshold
-  .qualifyingSamples = 3,        // Requires 3 consecutive valid samples
-  .freshnessTimeoutMS = 1000,    // 1 second timeout
-  .prechargeTimeoutMS = 30000    // 30 seconds max precharge window
+    .ready = true,
+    .bitrate = 500000,
+    .bms = {.id = 0x6B1,
+            .kind = STANDARD,
+            .offset = 2,
+            .width = TWO,
+            .endian = BIG,
+            .multiplier = 1,
+            .divisor = 1,
+            .cartOffset = 5},
+    .inverter = {.id = 0x0A7,
+                 .kind = EXTENDED,
+                 .offset = 0,
+                 .width = TWO,
+                 .endian = LITTLE,
+                 .multiplier = 1,
+                 .divisor = 10,
+                 .cartOffset = 0},
+    .minVoltage = 100,          // Lower bound set to 100 V
+    .maxVoltage = 450,          // Upper bound set to 450 V
+    .thresholdPercent = 90,     // 90% target threshold
+    .qualifyingSamples = 3,     // Requires 3 consecutive valid samples
+    .freshnessTimeoutMS = 1000, // 1 second timeout
+    .prechargeTimeoutMS = 30000 // 30 seconds max precharge window
 };
 
 /* Helper Functions */
-static const char* stateToString(State state) {
+static const char *stateToString(State state) {
   switch (state) {
-    case WAITING_FOR_BMS: return "WAITING_FOR_BMS";
-    case PRECHARGING:     return "PRECHARGING";
-    case COMPLETE:        return "COMPLETE";
-    case FAULT:           return "FAULT";
-    default:              return "UNKNOWN";
+  case WAITING_FOR_BMS:
+    return "WAITING_FOR_BMS";
+  case PRECHARGING:
+    return "PRECHARGING";
+  case COMPLETE:
+    return "COMPLETE";
+  case FAULT:
+    return "FAULT";
+  default:
+    return "UNKNOWN";
   }
 }
 
-static const char* faultToString(Fault fault) {
+static const char *faultToString(Fault fault) {
   switch (fault) {
-    case NONE:                 return "NONE";
-    case STALE_BMS:            return "STALE_BMS";
-    case STALE_INVERTER:       return "STALE_INVERTER";
-    case CONFIGURATION:        return "CONFIGURATION";
-    case MALFORMED_FRAME:      return "MALFORMED_FRAME";
-    case IMPLAUSIBLE_VOLTAGE:  return "IMPLAUSIBLE_VOLTAGE";
-    case TIMEOUT:              return "TIMEOUT";
-    default:                   return "UNKNOWN";
+  case NONE:
+    return "NONE";
+  case STALE_BMS:
+    return "STALE_BMS";
+  case STALE_INVERTER:
+    return "STALE_INVERTER";
+  case CONFIGURATION:
+    return "CONFIGURATION";
+  case MALFORMED_FRAME:
+    return "MALFORMED_FRAME";
+  case IMPLAUSIBLE_VOLTAGE:
+    return "IMPLAUSIBLE_VOLTAGE";
+  case TIMEOUT:
+    return "TIMEOUT";
+  default:
+    return "UNKNOWN";
   }
 }
 
 static Frame makeBMSFrame(uint16_t voltage, uint8_t cartFlag, uint8_t dlc) {
-  Frame f = {
-    .id = 0x6B1,
-    .kind = STANDARD,
-    .remote = false,
-    .dlc = dlc,
-    .data = {0}
-  };
+  Frame f = {.id = 0x6B1, .kind = STANDARD, .remote = false, .dlc = dlc, .data = {0}};
   f.data[2] = (uint8_t)((voltage >> 8) & 0xFF);
   f.data[3] = (uint8_t)(voltage & 0xFF);
   if (dlc > 5) {
@@ -76,20 +79,18 @@ static Frame makeBMSFrame(uint16_t voltage, uint8_t cartFlag, uint8_t dlc) {
 }
 
 static Frame makeInverterFrame(uint16_t rawVoltageTenths) {
-  return (Frame){
-    .id = 0x0A7,
-    .kind = EXTENDED,
-    .remote = false,
-    .dlc = 2,
-    .data = { (uint8_t)(rawVoltageTenths & 0xFF), (uint8_t)(rawVoltageTenths >> 8) }
-  };
+  return (Frame){.id = 0x0A7,
+                 .kind = EXTENDED,
+                 .remote = false,
+                 .dlc = 2,
+                 .data = {(uint8_t)(rawVoltageTenths & 0xFF), (uint8_t)(rawVoltageTenths >> 8)}};
 }
 
 static void logStep(uint32_t nowMS, const Controller *ctrl, const char *eventDesc) {
   Frame tx = infoFrame(ctrl);
-  printf("[%05u ms] %-42s | State: %-15s | Fault: %-19s | Tx: [%02X %02X %02X %02X %02X]\n",
-         nowMS, eventDesc, stateToString(ctrl->state), faultToString(ctrl->fault),
-         tx.data[0], tx.data[1], tx.data[2], tx.data[3], tx.data[4]);
+  printf("[%05u ms] %-42s | State: %-15s | Fault: %-19s | Tx: [%02X %02X %02X %02X %02X]\n", nowMS,
+         eventDesc, stateToString(ctrl->state), faultToString(ctrl->fault), tx.data[0], tx.data[1],
+         tx.data[2], tx.data[3], tx.data[4]);
 }
 
 /* --- Scenario Tests --- */

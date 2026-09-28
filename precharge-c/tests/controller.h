@@ -9,28 +9,13 @@
 #define CAN_ID 0x0D3
 #define LOOP_PERIOD_MS 5
 
-typedef enum {
-  STANDARD,
-  EXTENDED
-} FrameKind;
+typedef enum { STANDARD, EXTENDED } FrameKind;
 
-typedef enum {
-  LITTLE,
-  BIG
-} Endian;
+typedef enum { LITTLE, BIG } Endian;
 
-typedef enum {
-  ONE = 1,
-  TWO = 2,
-  FOUR = 4
-} Width;
+typedef enum { ONE = 1, TWO = 2, FOUR = 4 } Width;
 
-typedef enum {
-  WAITING_FOR_BMS,
-  PRECHARGING,
-  COMPLETE,
-  FAULT
-} State;
+typedef enum { WAITING_FOR_BMS, PRECHARGING, COMPLETE, FAULT } State;
 
 typedef enum {
   NONE = 0,

@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2026 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2026 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -46,34 +46,30 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 static const ProtocolConfig BASE_CONFIG = {
-  .ready = false, // Change to true once ready
-  .bitrate = 500000,
-  .bms = {
-    .id = 0x6B1,
-    .kind = STANDARD,
-    .offset = 2,
-    .width = TWO,
-    .endian = BIG,
-    .multiplier = 1,
-    .divisor = 10,
-    .cartOffset = 5
-  },
-  .inverter = {
-    .id = 0x0A7,
-    .kind = STANDARD,
-    .offset = 0,
-    .width = TWO,
-    .endian = LITTLE,
-    .multiplier = 1,
-    .divisor = 10,
-    .cartOffset = 0
-  },
-  .minVoltage = 0,
-  .maxVoltage = 450,
-  .thresholdPercent = 90,
-  .qualifyingSamples = 3,
-  .freshnessTimeoutMS = 10000, // 10 sec
-  .prechargeTimeoutMS = 300000 // 5 min
+    .ready = false, // Change to true once ready
+    .bitrate = 500000,
+    .bms = {.id = 0x6B1,
+            .kind = STANDARD,
+            .offset = 2,
+            .width = TWO,
+            .endian = BIG,
+            .multiplier = 1,
+            .divisor = 10,
+            .cartOffset = 5},
+    .inverter = {.id = 0x0A7,
+                 .kind = STANDARD,
+                 .offset = 0,
+                 .width = TWO,
+                 .endian = LITTLE,
+                 .multiplier = 1,
+                 .divisor = 10,
+                 .cartOffset = 0},
+    .minVoltage = 0,
+    .maxVoltage = 450,
+    .thresholdPercent = 90,
+    .qualifyingSamples = 3,
+    .freshnessTimeoutMS = 10000, // 10 sec
+    .prechargeTimeoutMS = 300000 // 5 min
 };
 
 static Controller controller;
@@ -92,18 +88,17 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN 0 */
 // For using printf() from tempSensor code
 int _write(int file, char *ptr, int len) {
-	(void) file;
-	HAL_UART_Transmit(&huart2, (uint8_t*) ptr, (uint16_t) len, HAL_MAX_DELAY);
-	return len;
+  (void)file;
+  HAL_UART_Transmit(&huart2, (uint8_t *)ptr, (uint16_t)len, HAL_MAX_DELAY);
+  return len;
 }
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
-int main(void)
-{
+ * @brief  The application entry point.
+ * @retval int
+ */
+int main(void) {
 
   /* USER CODE BEGIN 1 */
 
@@ -140,8 +135,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+  while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -158,8 +152,7 @@ int main(void)
 
     if (controller.state == COMPLETE) {
       HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_SET);
-    }
-    else if (controller.state == FAULT || controller.state == PRECHARGING) {
+    } else if (controller.state == FAULT || controller.state == PRECHARGING) {
       HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7, GPIO_PIN_RESET);
     }
 
@@ -169,48 +162,44 @@ int main(void)
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
-void SystemClock_Config(void)
-{
+ * @brief System Clock Configuration
+ * @retval None
+ */
+void SystemClock_Config(void) {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
+   * in the RCC_OscInitTypeDef structure.
+   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
     Error_Handler();
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType =
+      RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
-  {
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK) {
     Error_Handler();
   }
 }
 
 /**
-  * @brief CAN Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_CAN_Init(void)
-{
+ * @brief CAN Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_CAN_Init(void) {
 
   /* USER CODE BEGIN CAN_Init 0 */
 
@@ -231,23 +220,20 @@ static void MX_CAN_Init(void)
   hcan.Init.AutoRetransmission = DISABLE;
   hcan.Init.ReceiveFifoLocked = DISABLE;
   hcan.Init.TransmitFifoPriority = DISABLE;
-  if (HAL_CAN_Init(&hcan) != HAL_OK)
-  {
+  if (HAL_CAN_Init(&hcan) != HAL_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN CAN_Init 2 */
 
   /* USER CODE END CAN_Init 2 */
-
 }
 
 /**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART2_UART_Init(void)
-{
+ * @brief USART2 Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_USART2_UART_Init(void) {
 
   /* USER CODE BEGIN USART2_Init 0 */
 
@@ -264,23 +250,20 @@ static void MX_USART2_UART_Init(void)
   huart2.Init.Mode = UART_MODE_TX_RX;
   huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
-  {
+  if (HAL_UART_Init(&huart2) != HAL_OK) {
     Error_Handler();
   }
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
-
 }
 
 /**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_GPIO_Init(void)
-{
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
+static void MX_GPIO_Init(void) {
   /* USER CODE BEGIN MX_GPIO_Init_1 */
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE END MX_GPIO_Init_1 */
@@ -303,8 +286,7 @@ static void MX_GPIO_Init(void)
 uint32_t packedFilterId(VoltageSpec spec) {
   if (spec.kind == EXTENDED) {
     return ((spec.id & 0x1FFFFFFF) << 3) | (1 << 2);
-  }
-  else {
+  } else {
     return (spec.id & 0x7FF) << 21;
   }
 }
@@ -355,17 +337,12 @@ bool checkSpec(VoltageSpec spec) {
 }
 
 bool checkConfig(ProtocolConfig config) {
-  return config.ready
-    && checkSpec(config.bms)
-    && checkSpec(config.inverter)
-    && !(config.bms.id == config.inverter.id && config.bms.kind == config.inverter.kind)
-    && (config.minVoltage <= config.maxVoltage)
-    && (config.maxVoltage <= 0xFFFF)
-    && (config.thresholdPercent > 0)
-    && (config.thresholdPercent <= 100)
-    && (config.qualifyingSamples > 0)
-    && (config.freshnessTimeoutMS > 0)
-    && (config.prechargeTimeoutMS > 0);
+  return config.ready && checkSpec(config.bms) && checkSpec(config.inverter) &&
+         !(config.bms.id == config.inverter.id && config.bms.kind == config.inverter.kind) &&
+         (config.minVoltage <= config.maxVoltage) && (config.maxVoltage <= 0xFFFF) &&
+         (config.thresholdPercent > 0) && (config.thresholdPercent <= 100) &&
+         (config.qualifyingSamples > 0) && (config.freshnessTimeoutMS > 0) &&
+         (config.prechargeTimeoutMS > 0);
 }
 
 void initController(Controller *self, ProtocolConfig config, uint32_t nowMS) {
@@ -423,8 +400,7 @@ DecodeError checkCart(const Frame *frame, VoltageSpec spec, bool *outCart) {
   if (raw == 0) {
     *outCart = true;
     return OK;
-  }
-  else if (raw == 1) {
+  } else if (raw == 1) {
     *outCart = false;
     return OK;
   }
@@ -438,34 +414,38 @@ void controllerLatch(Controller *self, Fault fault) {
 }
 
 DecodeError decodeVoltage(const Frame *frame, VoltageSpec spec, uint32_t *outVal) {
-  if (frame->remote) return REMOTE_FRAME;
-  if (!matchSpec(frame, spec)) return WRONG_FRAME;
-  if (frame->dlc < (spec.offset + (uint8_t)spec.width)) return PAYLOAD_TOO_SHORT;
-  if (spec.divisor == 0) return INVALID_SCALE;
+  if (frame->remote)
+    return REMOTE_FRAME;
+  if (!matchSpec(frame, spec))
+    return WRONG_FRAME;
+  if (frame->dlc < (spec.offset + (uint8_t)spec.width))
+    return PAYLOAD_TOO_SHORT;
+  if (spec.divisor == 0)
+    return INVALID_SCALE;
 
   uint32_t raw = 0;
   const uint8_t *p = &frame->data[spec.offset];
 
   switch (spec.width) {
-    case ONE:
-      raw = p[0];
-      break;
-    case TWO:
-      if (spec.endian == LITTLE) {
-        raw = (uint32_t)p[0] | ((uint32_t)p[1] << 8);
-      } 
-      else {
-        raw = ((uint32_t)p[0] << 8) | (uint32_t)p[1];
-      }
-      break;
-    case FOUR:
-      if (spec.endian == LITTLE) {
-        raw = (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-      }
-      else {
-        raw = ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | (uint32_t)p[3];
-      }
-      break;
+  case ONE:
+    raw = p[0];
+    break;
+  case TWO:
+    if (spec.endian == LITTLE) {
+      raw = (uint32_t)p[0] | ((uint32_t)p[1] << 8);
+    } else {
+      raw = ((uint32_t)p[0] << 8) | (uint32_t)p[1];
+    }
+    break;
+  case FOUR:
+    if (spec.endian == LITTLE) {
+      raw =
+          (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+    } else {
+      raw =
+          ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | (uint32_t)p[3];
+    }
+    break;
   }
 
   uint64_t scaled = (uint64_t)raw * spec.multiplier;
@@ -506,8 +486,7 @@ void controllerQualify(Controller *self, uint32_t nowMS) {
     if (self->consecutiveQualifying >= self->config.qualifyingSamples) {
       self->state = COMPLETE;
     }
-  }
-  else {
+  } else {
     self->consecutiveQualifying = 0;
   }
 }
@@ -542,8 +521,7 @@ void ingestController(Controller *self, const Frame *frame, uint32_t nowMS) {
       self->prechargingStartedMS = nowMS;
       self->hasPrechargingStartedMS = true;
     }
-  }
-  else if (matchSpec(frame, self->config.inverter)) {
+  } else if (matchSpec(frame, self->config.inverter)) {
     uint32_t value = 0;
     if (decodeVoltage(frame, self->config.inverter, &value) != OK) {
       controllerLatch(self, MALFORMED_FRAME);
@@ -561,9 +539,7 @@ void ingestController(Controller *self, const Frame *frame, uint32_t nowMS) {
   }
 }
 
-uint32_t elapsed(uint32_t now, uint32_t then) {
-  return now - then;
-}
+uint32_t elapsed(uint32_t now, uint32_t then) { return now - then; }
 
 void controllerTick(Controller *self, uint32_t nowMS) {
   if (self->state == COMPLETE || self->state == FAULT) {
@@ -588,8 +564,8 @@ void controllerTick(Controller *self, uint32_t nowMS) {
       controllerLatch(self, STALE_INVERTER);
       return;
     }
-  }
-  else if (self->hasPrechargingStartedMS && elapsed(nowMS, self->prechargingStartedMS) >= self->config.freshnessTimeoutMS) {
+  } else if (self->hasPrechargingStartedMS &&
+             elapsed(nowMS, self->prechargingStartedMS) >= self->config.freshnessTimeoutMS) {
     controllerLatch(self, STALE_INVERTER);
     return;
   }
@@ -619,34 +595,24 @@ bool txCAN(const Frame *frame) {
   if (frame->kind == EXTENDED) {
     header.IDE = CAN_ID_EXT;
     header.ExtId = frame->id;
-  }
-  else {
+  } else {
     header.IDE = CAN_ID_STD;
     header.StdId = frame->id;
   }
 
-  return (HAL_CAN_AddTxMessage(&hcan, &header, (uint8_t*)frame->data, &txMailbox) == HAL_OK);
+  return (HAL_CAN_AddTxMessage(&hcan, &header, (uint8_t *)frame->data, &txMailbox) == HAL_OK);
 }
 
 Frame infoFrame(const Controller *self) {
-  Frame frame = {
-    .id = CAN_ID,
-    .kind = STANDARD,
-    .remote = false,
-    .dlc = 5,
-    .data = {0}
-  };
+  Frame frame = {.id = CAN_ID, .kind = STANDARD, .remote = false, .dlc = 5, .data = {0}};
   if (self->fault != NONE) {
     frame.data[0] = (uint8_t)self->fault;
-  }
-  else {
+  } else {
     if (self->state == COMPLETE) {
       frame.data[0] = 7;
-    }
-    else if (self->state == PRECHARGING) {
+    } else if (self->state == PRECHARGING) {
       frame.data[0] = 8;
-    }
-    else {
+    } else {
       frame.data[0] = 0;
     }
   }
@@ -664,29 +630,26 @@ Frame infoFrame(const Controller *self) {
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
-void Error_Handler(void)
-{
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
+void Error_Handler(void) {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1)
-  {
+  while (1) {
   }
   /* USER CODE END Error_Handler_Debug */
 }
 #ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t *file, uint32_t line)
-{
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
+void assert_failed(uint8_t *file, uint32_t line) {
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
