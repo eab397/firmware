@@ -13,7 +13,7 @@
  *   setFanDuty(uint8_t percent)    0–100
  *
  * ── DAQ usage ───────────────────────────────────────────────────────────────
- *   Temperature, fan duty, and pump duty are appended to PWM26.CSV on an
+ *   Temperature, fan duty, and pump duty are logged to a new RUNnnnnn.CSV on an
  *   SPI SD card once per second. D10 is the SD card chip-select pin.
  */
 
@@ -24,7 +24,6 @@
 // ── Build-time config ────────────────────────────────────────────────────────
 #define SD_CS_PIN 10
 #define LOG_INTERVAL 1000UL // ms between SD-card samples
-#define LOG_FILENAME "PWM26.CSV"
 
 // ── Pin assignments ──────────────────────────────────────────────────────────
 #define PUMP_PIN 9  // OC1A — Timer 1 Phase Correct PWM
@@ -146,6 +145,15 @@ void setFanDuty(uint8_t percent) {
 // SD-card logging
 // ════════════════════════════════════════════════════════════════════════════
 
+bool selectLogFilename(char *filename) {
+  for (unsigned long run = 1; run <= 99999UL; ++run) {
+    snprintf(filename, 13, "RUN%05lu.CSV", run);
+    if (!SD.exists(filename))
+      return true;
+  }
+  return false;
+}
+
 void logSample(unsigned long timestamp, float temperature, uint8_t fanPercent,
                uint8_t pumpPercent) {
   if (!sdReady)
@@ -215,18 +223,18 @@ void setup() {
   if (!SD.begin(SD_CS_PIN)) {
     Serial.println(F("SD card initialization failed; logging disabled."));
   } else {
-    const bool newFile = !SD.exists(LOG_FILENAME);
-    logFile = SD.open(LOG_FILENAME, FILE_WRITE);
+    char filename[13];
+    if (selectLogFilename(filename))
+      logFile = SD.open(filename, FILE_WRITE);
 
     if (!logFile) {
-      Serial.println(F("Could not open PWM26.CSV; logging disabled."));
+      Serial.println(F("Could not create a new CSV; logging disabled."));
     } else {
       sdReady = true;
-      if (newFile) {
-        logFile.println(F("time_ms,coolant_temp_c,fan_duty_percent,pump_duty_percent"));
-        logFile.flush();
-      }
-      Serial.println(F("SD-card logging ready at 1 Hz."));
+      logFile.println(F("time_ms,coolant_temp_c,fan_duty_percent,pump_duty_percent"));
+      logFile.flush();
+      Serial.print(F("SD-card logging at 1 Hz to "));
+      Serial.println(filename);
     }
   }
 
