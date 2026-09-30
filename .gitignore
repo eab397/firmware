@@ -5,3 +5,8 @@ precharge-c/build/
 # Local Arduino development recordings, generated reports, and test/build data.
 /outputs/
 /work/
+node_modules/
+.venv/
+.ruff_cache/
+.zig-cache/
+zig-out/

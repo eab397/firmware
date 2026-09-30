@@ -112,7 +112,7 @@ pub fn infoFrame(controller: Controller) Frame {
     frame.data[0] = if (controller.fault) |fault| @intFromEnum(fault) else switch (controller.state) {
         .complete => 7,
         .precharging => 8,
-        else => 0
+        else => 0,
     };
     if (controller.bms) |reading|
         std.mem.writeInt(u16, frame.data[1..3], @intCast(reading.value), .big);

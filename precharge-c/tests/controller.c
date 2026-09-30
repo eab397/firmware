@@ -20,17 +20,12 @@ bool checkSpec(VoltageSpec spec) {
 }
 
 bool checkConfig(ProtocolConfig config) {
-  return config.ready
-    && checkSpec(config.bms)
-    && checkSpec(config.inverter)
-    && !(config.bms.id == config.inverter.id && config.bms.kind == config.inverter.kind)
-    && (config.minVoltage <= config.maxVoltage)
-    && (config.maxVoltage <= 0xFFFF)
-    && (config.thresholdPercent > 0)
-    && (config.thresholdPercent <= 100)
-    && (config.qualifyingSamples > 0)
-    && (config.freshnessTimeoutMS > 0)
-    && (config.prechargeTimeoutMS > 0);
+  return config.ready && checkSpec(config.bms) && checkSpec(config.inverter) &&
+         !(config.bms.id == config.inverter.id && config.bms.kind == config.inverter.kind) &&
+         (config.minVoltage <= config.maxVoltage) && (config.maxVoltage <= 0xFFFF) &&
+         (config.thresholdPercent > 0) && (config.thresholdPercent <= 100) &&
+         (config.qualifyingSamples > 0) && (config.freshnessTimeoutMS > 0) &&
+         (config.prechargeTimeoutMS > 0);
 }
 
 void initController(Controller *self, ProtocolConfig config, uint32_t nowMS) {
@@ -83,32 +78,38 @@ void controllerLatch(Controller *self, Fault fault) {
 }
 
 DecodeError decodeVoltage(const Frame *frame, VoltageSpec spec, uint32_t *outVal) {
-  if (frame->remote) return REMOTE_FRAME;
-  if (!matchSpec(frame, spec)) return WRONG_FRAME;
-  if (frame->dlc < (spec.offset + (uint8_t)spec.width)) return PAYLOAD_TOO_SHORT;
-  if (spec.divisor == 0) return INVALID_SCALE;
+  if (frame->remote)
+    return REMOTE_FRAME;
+  if (!matchSpec(frame, spec))
+    return WRONG_FRAME;
+  if (frame->dlc < (spec.offset + (uint8_t)spec.width))
+    return PAYLOAD_TOO_SHORT;
+  if (spec.divisor == 0)
+    return INVALID_SCALE;
 
   uint32_t raw = 0;
   const uint8_t *p = &frame->data[spec.offset];
 
   switch (spec.width) {
-    case ONE:
-      raw = p[0];
-      break;
-    case TWO:
-      if (spec.endian == LITTLE) {
-        raw = (uint32_t)p[0] | ((uint32_t)p[1] << 8);
-      } else {
-        raw = ((uint32_t)p[0] << 8) | (uint32_t)p[1];
-      }
-      break;
-    case FOUR:
-      if (spec.endian == LITTLE) {
-        raw = (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-      } else {
-        raw = ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | (uint32_t)p[3];
-      }
-      break;
+  case ONE:
+    raw = p[0];
+    break;
+  case TWO:
+    if (spec.endian == LITTLE) {
+      raw = (uint32_t)p[0] | ((uint32_t)p[1] << 8);
+    } else {
+      raw = ((uint32_t)p[0] << 8) | (uint32_t)p[1];
+    }
+    break;
+  case FOUR:
+    if (spec.endian == LITTLE) {
+      raw =
+          (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+    } else {
+      raw =
+          ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | (uint32_t)p[3];
+    }
+    break;
   }
 
   uint64_t scaled = (uint64_t)raw * spec.multiplier;
@@ -199,9 +200,7 @@ void ingestController(Controller *self, const Frame *frame, uint32_t nowMS) {
   }
 }
 
-uint32_t elapsed(uint32_t now, uint32_t then) {
-  return now - then;
-}
+uint32_t elapsed(uint32_t now, uint32_t then) { return now - then; }
 
 void controllerTick(Controller *self, uint32_t nowMS) {
   if (self->state == COMPLETE || self->state == FAULT) {
@@ -226,20 +225,15 @@ void controllerTick(Controller *self, uint32_t nowMS) {
       controllerLatch(self, STALE_INVERTER);
       return;
     }
-  } else if (self->hasPrechargingStartedMS && elapsed(nowMS, self->prechargingStartedMS) >= self->config.freshnessTimeoutMS) {
+  } else if (self->hasPrechargingStartedMS &&
+             elapsed(nowMS, self->prechargingStartedMS) >= self->config.freshnessTimeoutMS) {
     controllerLatch(self, STALE_INVERTER);
     return;
   }
 }
 
 Frame infoFrame(const Controller *self) {
-  Frame frame = {
-    .id = CAN_ID,
-    .kind = STANDARD,
-    .remote = false,
-    .dlc = 5,
-    .data = {0}
-  };
+  Frame frame = {.id = CAN_ID, .kind = STANDARD, .remote = false, .dlc = 5, .data = {0}};
   if (self->fault != NONE) {
     frame.data[0] = (uint8_t)self->fault;
   } else {

@@ -1,21 +1,21 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.h
-  * @brief          : Header for main.c file.
-  *                   This file contains the common defines of the application.
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2026 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.h
+ * @brief          : Header for main.c file.
+ *                   This file contains the common defines of the application.
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2026 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
@@ -41,28 +41,13 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-typedef enum {
-  STANDARD,
-  EXTENDED
-} FrameKind;
+typedef enum { STANDARD, EXTENDED } FrameKind;
 
-typedef enum {
-  LITTLE,
-  BIG
-} Endian;
+typedef enum { LITTLE, BIG } Endian;
 
-typedef enum {
-  ONE = 1,
-  TWO = 2,
-  FOUR = 4
-} Width;
+typedef enum { ONE = 1, TWO = 2, FOUR = 4 } Width;
 
-typedef enum {
-  WAITING_FOR_BMS,
-  PRECHARGING,
-  COMPLETE,
-  FAULT
-} State;
+typedef enum { WAITING_FOR_BMS, PRECHARGING, COMPLETE, FAULT } State;
 
 typedef enum {
   NONE = 0,
