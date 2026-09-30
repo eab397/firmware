@@ -7,11 +7,11 @@ This is a bench acquisition and analysis tool. It has not been validated as a ve
 ## Hardware
 
 | ASPD-4525 PCB label | Nano R4 pin |
-| --- | --- |
-| 5V | 5V |
-| GND | GND |
-| SDA | A4 |
-| SCL | A5 |
+| ------------------- | ----------- |
+| 5V                  | 5V          |
+| GND                 | GND         |
+| SDA                 | A4          |
+| SCL                 | A5          |
 
 Identify wires from the sensor PCB labels, not color alone. Disconnect power before changing connections. The Nano R4 header bus uses `Wire`; its separate Qwiic connector uses `Wire1`. Ensure suitable I2C pull-ups are present on the bus. When absent, the documented Nano R4 arrangement is one 4.7 kΩ resistor from SDA to 5V and another from SCL to 5V. Do not connect either signal directly to 5V. A lit sensor power LED does not establish I2C communication.
 
@@ -87,11 +87,11 @@ Only normal status and counts within the calibrated range are used. Density is f
 
 Newline-terminated commands:
 
-| Command | Response/action |
-| --- | --- |
-| `INFO` | `HELLO,2,1000,<current_rate>` |
+| Command    | Response/action                   |
+| ---------- | --------------------------------- |
+| `INFO`     | `HELLO,2,1000,<current_rate>`     |
 | `RATE,100` | `RATE_OK,100` or `RATE_ERROR,...` |
-| `r` | Explicit I2C recovery attempt |
+| `r`        | Explicit I2C recovery attempt     |
 
 Sample: `D,sequence,device_micros,raw,status,requested_hz,total_skipped_slots`
 

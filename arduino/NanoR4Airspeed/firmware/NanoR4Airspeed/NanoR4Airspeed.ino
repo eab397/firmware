@@ -23,7 +23,7 @@ uint8_t commandLength = 0;
 bool commandOverflow = false;
 
 void startI2C() {
-  Wire.begin();          // Nano R4: SDA = A4, SCL = A5
+  Wire.begin(); // Nano R4: SDA = A4, SCL = A5
   Wire.setClock(100000);
   Wire.setWireTimeout(25000);
 }
@@ -36,7 +36,8 @@ void pullLow(uint8_t pin) {
 
 bool waitForClockHigh() {
   unsigned long start = micros();
-  while (digitalRead(SCL) == LOW && micros() - start < 2000) {}
+  while (digitalRead(SCL) == LOW && micros() - start < 2000) {
+  }
   return digitalRead(SCL) == HIGH;
 }
 
@@ -55,7 +56,8 @@ void recoverI2C() {
       delayMicroseconds(10);
       pinMode(SCL, INPUT_PULLUP);
       pulses++;
-      if (!waitForClockHigh()) break;
+      if (!waitForClockHigh())
+        break;
       delayMicroseconds(10);
     }
   }
@@ -76,11 +78,16 @@ void recoverI2C() {
   delayMicroseconds(50);
   Serial.print("I2C_RECOVERY attempt=");
   Serial.print(++recoveryCount);
-  Serial.print(" before_SDA="); Serial.print(beforeSDA);
-  Serial.print(" before_SCL="); Serial.print(beforeSCL);
-  Serial.print(" released_SDA="); Serial.print(digitalRead(SDA));
-  Serial.print(" released_SCL="); Serial.print(digitalRead(SCL));
-  Serial.print(" clock_pulses="); Serial.println(pulses);
+  Serial.print(" before_SDA=");
+  Serial.print(beforeSDA);
+  Serial.print(" before_SCL=");
+  Serial.print(beforeSCL);
+  Serial.print(" released_SDA=");
+  Serial.print(digitalRead(SDA));
+  Serial.print(" released_SCL=");
+  Serial.print(digitalRead(SCL));
+  Serial.print(" clock_pulses=");
+  Serial.println(pulses);
   startI2C();
   consecutiveFailures = 0;
   lastRecoveryAt = millis();
@@ -91,8 +98,10 @@ void recoverI2C() {
 void handleCommand() {
   commandBuffer[commandLength] = '\0';
   if (strcmp(commandBuffer, "INFO") == 0) {
-    Serial.print("HELLO,2,"); Serial.print(MAX_REQUESTED_HZ);
-    Serial.print(','); Serial.println(requestedHz);
+    Serial.print("HELLO,2,");
+    Serial.print(MAX_REQUESTED_HZ);
+    Serial.print(',');
+    Serial.println(requestedHz);
   } else if (strncmp(commandBuffer, "RATE,", 5) == 0) {
     char *end;
     long value = strtol(commandBuffer + 5, &end, 10);
@@ -100,7 +109,8 @@ void handleCommand() {
       requestedHz = (uint16_t)value;
       samplePeriodUs = 1000000UL / requestedHz;
       nextSampleAt = micros() + samplePeriodUs;
-      Serial.print("RATE_OK,"); Serial.println(requestedHz);
+      Serial.print("RATE_OK,");
+      Serial.println(requestedHz);
     } else {
       Serial.println("RATE_ERROR,use 1 through 1000");
     }
@@ -112,10 +122,13 @@ void handleCommand() {
 void readCommands() {
   while (Serial.available()) {
     char c = Serial.read();
-    if (c == '\r') continue;
+    if (c == '\r')
+      continue;
     if (c == '\n') {
-      if (!commandOverflow) handleCommand();
-      else Serial.println("COMMAND_ERROR,too long");
+      if (!commandOverflow)
+        handleCommand();
+      else
+        Serial.println("COMMAND_ERROR,too long");
       commandLength = 0;
       commandOverflow = false;
     } else if (commandLength < sizeof(commandBuffer) - 1) {
@@ -129,10 +142,11 @@ void readCommands() {
 void setup() {
   Serial.begin(115200);
   unsigned long start = millis();
-  while (!Serial && millis() - start < 5000) delay(10);
+  while (!Serial && millis() - start < 5000)
+    delay(10);
 
   startI2C();
-  delay(100);            // Allow sensor startup time.
+  delay(100); // Allow sensor startup time.
   nextSampleAt = micros();
 }
 
@@ -144,7 +158,8 @@ void loop() {
     return;
   }
   uint32_t sampleTime = micros();
-  if ((int32_t)(sampleTime - nextSampleAt) < 0) return;
+  if ((int32_t)(sampleTime - nextSampleAt) < 0)
+    return;
   uint32_t lateSlots = (sampleTime - nextSampleAt) / samplePeriodUs;
   skippedSlots += lateSlots;
   nextSampleAt += (lateSlots + 1) * samplePeriodUs;
@@ -159,15 +174,18 @@ void loop() {
   uint8_t received = Wire.requestFrom(SENSOR_ADDRESS, (uint8_t)2);
 
   if (received != 2 || Wire.available() < 2) {
-    while (Wire.available()) Wire.read();
+    while (Wire.available())
+      Wire.read();
     char packet[64];
-    int length = snprintf(packet, sizeof(packet), "F,%lu,%lu,%u,%u,%lu\n",
-                          (unsigned long)sampleSequence, (unsigned long)sampleTime,
-                          (unsigned int)received, (unsigned int)requestedHz,
-                          (unsigned long)skippedSlots);
+    int length =
+        snprintf(packet, sizeof(packet), "F,%lu,%lu,%u,%u,%lu\n", (unsigned long)sampleSequence,
+                 (unsigned long)sampleTime, (unsigned int)received, (unsigned int)requestedHz,
+                 (unsigned long)skippedSlots);
     Serial.write((const uint8_t *)packet, length);
-    if (consecutiveFailures < 255) consecutiveFailures++;
-    if (consecutiveFailures >= 3 && millis() - lastRecoveryAt >= 500) recoverI2C();
+    if (consecutiveFailures < 255)
+      consecutiveFailures++;
+    if (consecutiveFailures >= 3 && millis() - lastRecoveryAt >= 500)
+      recoverI2C();
   } else {
     consecutiveFailures = 0;
     uint8_t highByte = Wire.read();
@@ -177,10 +195,10 @@ void loop() {
 
     // D,sequence,device_micros,raw,status,requested_hz,total_skipped_slots
     char packet[64];
-    int length = snprintf(packet, sizeof(packet), "D,%lu,%lu,%u,%u,%u,%lu\n",
-                          (unsigned long)sampleSequence, (unsigned long)sampleTime,
-                          (unsigned int)raw, (unsigned int)status,
-                          (unsigned int)requestedHz, (unsigned long)skippedSlots);
+    int length =
+        snprintf(packet, sizeof(packet), "D,%lu,%lu,%u,%u,%u,%lu\n", (unsigned long)sampleSequence,
+                 (unsigned long)sampleTime, (unsigned int)raw, (unsigned int)status,
+                 (unsigned int)requestedHz, (unsigned long)skippedSlots);
     Serial.write((const uint8_t *)packet, length);
   }
 }

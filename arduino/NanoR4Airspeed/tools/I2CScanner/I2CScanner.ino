@@ -25,13 +25,15 @@ void loop() {
 
     if (result == 0) {
       Serial.print("Device found at 0x");
-      if (address < 0x10) Serial.print('0');
+      if (address < 0x10)
+        Serial.print('0');
       Serial.println(address, HEX);
       found++;
     } else if (result != 2) {
       // Code 2 means no device acknowledged this address.
       Serial.print("I2C error at 0x");
-      if (address < 0x10) Serial.print('0');
+      if (address < 0x10)
+        Serial.print('0');
       Serial.print(address, HEX);
       Serial.print("; error code = ");
       Serial.println(result);
@@ -39,7 +41,8 @@ void loop() {
     }
   }
 
-  if (found == 0) Serial.println("NO I2C DEVICES DETECTED.");
+  if (found == 0)
+    Serial.println("NO I2C DEVICES DETECTED.");
   Serial.print("Devices found: ");
   Serial.println(found);
   Serial.print("Bus errors: ");
