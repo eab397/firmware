@@ -1,4 +1,4 @@
-# 06/13/2026 19:08:14
+# 10/01/2026 01:43:16
 # Firmware Date-code: 20240510
 # Firmware Version  : 2050
 # Hardware Version  : 2345
@@ -39,7 +39,7 @@ CAN_TimeOut_(/3ms)_EEPROM             ,  34464
 CAN_Slave_Cmd_ID_EEPROM               ,   2001  
 CAN_Slave_Dir_EEPROM_(0=SAME_1=FLIP)  ,    200  
 CAN_Port_Select_EEPROM_(0=A_1=B)      ,      0  
-IQ_Limit_EEPROM_(Amps)_x_10           ,   4250  
+IQ_Limit_EEPROM_(Amps)_x_10           ,  64002  
 ID_Limit_EEPROM_(Amps)_x_10           ,   4250  
 Amp_Hours_EEPROM_(AHrx10)             ,      0  
 DC_Volt_Limit_EEPROM_(V)_x_10         ,   4000  
@@ -53,12 +53,12 @@ RTD_Selection_EEPROM_(BITS_1_0)       ,      3
 Fan_On_Temp_EEPROM_(C)_x_10           ,      0  
 Accel_Pedal_Flipped_EEPROM_(0=N_1=Y)  ,      0  
 Pedal_Lo_EEPROM_(V)_x_100             ,      0  
-Accel_Min_EEPROM_(V)_x_100            ,    250  
-Coast_Lo_EEPROM_(V)_x_100             ,    250  
-Coast_Hi_EEPROM_(V)_x_100             ,    250  
+Accel_Min_EEPROM_(V)_x_100            ,    230  
+Coast_Lo_EEPROM_(V)_x_100             ,    230  
+Coast_Hi_EEPROM_(V)_x_100             ,    230  
 Accel_Max_EEPROM_(V)_x_100            ,    380  
-Pedal_Hi_EEPROM_(V)_x_100             ,    480  
-Motor_Torque_Limit_EEPROM_(Nm)_x_10   ,    800  
+Pedal_Hi_EEPROM_(V)_x_100             ,    460  
+Motor_Torque_Limit_EEPROM_(Nm)_x_10   ,   1500  
 Regen_Torque_Limit_EEPROM_(Nm)_x_10   ,      0  
 Braking_Torque_Limit_EEPROM_(Nm)_x_10 ,      0  
 Brake_Output_Torque_EEPROM_(Nm)_x_10  ,      0  
@@ -71,7 +71,7 @@ Motor_Overspeed_EEPROM_(RPM)          ,   6500
 Max_Speed_EEPROM_(RPM)                ,   6000  
 Valet_Mode_Speed_EEPROM_(RPM)         ,      0  
 Regen_Fade_Speed_EEPROM_(RPM)         ,    200  
-Break_Speed_EEPROM_(RPM)              ,   4000  
+Break_Speed_EEPROM_(RPM)              ,    500  
 Kp_Speed_EEPROM_x_100                 ,    800  
 Ki_Speed_EEPROM_x_10000               ,     25  
 Kd_Speed_EEPROM_x_100                 ,      4  
