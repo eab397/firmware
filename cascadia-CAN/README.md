@@ -5,12 +5,21 @@ Requires Python 3.14, uv, and a terminal supporting `curses` (macOS/Linux).
 
 ```sh
 uv sync
-uv run main.py --port /dev/cu.usbserial-DN8FHRI7
+uv run main.py --port /dev/cu.usbserial-DN7BORLC
 ```
 
-The defaults match `../scripts/precharge_can_sim.py`: serial 115200 baud,
+The default port is `/dev/cu.usbserial-DN7BORLC`. Bus settings match
+`../scripts/precharge_can_sim.py`: serial 115200 baud,
 CAN 500 kbit/s, standard identifiers, and inverter base `0xA0`.
-`--bitrate` accepts 125, 250, 500, or 1000 kbit/s. Connection overrides:
+`--bitrate` accepts 125, 250, 500, or 1000 kbit/s.
+
+The adapter is polled every 2 ms while idle. Before each parameter request,
+incoming traffic is drained for 100 ms, matching the existing CANdapter script's
+command interval without leaving the USB FIFO unpolled. `--request-gap` adjusts
+this interval in seconds. This completed one full live scan, but intermittent
+adapter rejections and missing replies remain under investigation.
+
+Connection overrides:
 
 ```sh
 uv run main.py --port /dev/cu.usbserial-YOUR_ADAPTER --bitrate 500 --base 0xA0 --mode standard
@@ -23,7 +32,30 @@ parameter read/write requests during a session. `c` reconnects using the origina
 CLI settings. After programming new CAN settings and power cycling, relaunch
 with the new settings shown in the batch result.
 
+## Individual reads and writes
+
+These commands open the adapter without scanning all parameters or starting the TUI:
+
+```sh
+uv run main.py read 100
+uv run main.py write 129 150
+uv run main.py write 129 1500 --raw
+```
+
+Addresses are from the PDF, not positions in the GUI export. Values use engineering
+units by default (the examples write 150 Nm); `--raw` accepts raw decimal or hex
+words. Connection options such as `--port` and `--timeout` work with these commands.
+`write` applies immediately: it validates the value and related settings, checks
+for changes since the initial read, requires fresh inverter-disabled telemetry,
+and verifies by readback. Writes are never retried. No full scan is performed.
+Running without a command still opens the TUI.
+
 ## Keys
+
+Connecting does not read EEPROM automatically. Select a parameter and press `r`
+to read it, `i` to edit it, then `w` to review and apply the staged value. A single
+edit is verified without a full scan. `R` explicitly reads all parameters; batches
+of multiple edits retain the full refresh.
 
 | Key                 | Action                                                   |
 | ------------------- | -------------------------------------------------------- |
@@ -71,7 +103,9 @@ supported programming interface before writing with this tool.
 Each write is acknowledged and independently read back. A rejection, timeout,
 mismatch, conflict, or cancellation stops the batch. Completed writes remain
 stored; unverified edits remain staged. Writes are never automatically retried
-or rolled back. After a transaction timeout, reconnect before further requests
+or rolled back. Reads retry the same parameter up to twice when a reply is missing
+or the adapter rejects the transmit request.
+After a transaction exhausts its attempts, reconnect before further requests
 so delayed replies cannot be accepted by a later transaction.
 
 Motor-type changes are written first and followed by a full reread because they

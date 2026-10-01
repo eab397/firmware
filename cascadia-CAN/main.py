@@ -10,6 +10,7 @@ import json
 import os
 import queue
 import struct
+import sys
 import tempfile
 import textwrap
 import threading
@@ -19,7 +20,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-DEFAULT_PORT = "/dev/cu.usbserial-DN8FHRI7"
+DEFAULT_PORT = "/dev/cu.usbserial-DN7BORLC"
 SERIAL_BAUD = 115200
 SPEED_CODES = {125: 4, 250: 5, 500: 6, 1000: 8}
 IMMEDIATE = {
@@ -547,13 +548,14 @@ class Candapter:
             frames.append(frame)
         return frames
 
-    def rejected(self):
+    def rejected(self, command=None):
         rejected = 7 in self.tokens
         self.tokens.clear()
         if rejected:
-            raise RuntimeError("CANdapter rejected command (BELL)")
+            detail = f" {command!r}" if command is not None else ""
+            raise RuntimeError(f"CANdapter rejected command{detail} (BELL)")
 
-    def command(self, command: str):
+    def command(self, command: str, *, allow_bell=False):
         self.tokens.clear()
         self.serial.write((command + "\r").encode("ascii"))
         self.serial.flush()
@@ -561,13 +563,17 @@ class Candapter:
         while time.monotonic() < deadline:
             self.pump()
             if self.tokens:
-                self.rejected()
+                if allow_bell:
+                    self.tokens.clear()
+                else:
+                    self.rejected(command)
                 return
         raise TimeoutError(f"CANdapter did not acknowledge {command!r}")
 
     def open(self):
         self.serial.reset_input_buffer()
-        self.command("C")
+        # C returns BELL when the channel is already closed.
+        self.command("C", allow_bell=True)
         self.command(f"S{SPEED_CODES[self.args.bitrate]}")
         # O may succeed even if its ACK is lost: attempt C on cleanup either way.
         self.opened = True
@@ -602,6 +608,11 @@ class Candapter:
             raise RuntimeError(
                 "reconnect after a transaction timeout before further requests"
             )
+        # Keep the USB FIFO draining while leaving time between parameter requests.
+        deadline = time.monotonic() + self.args.request_gap
+        while time.monotonic() < deadline:
+            self.pump()
+            self.rejected()
         self.pump()  # Discard old replies while retaining status telemetry.
         self.rejected()
         if word is not None:
@@ -609,19 +620,34 @@ class Candapter:
         payload = struct.pack(
             "<HBBHBB", address, int(word is not None), 0, word or 0, 0, 0
         )
-        self.serial.write(
-            (
-                candapter_frame(
-                    self.identifier(0x21), self.args.mode != "standard", payload
-                )
-                + "\r"
-            ).encode("ascii")
-        )
+        request = (
+            candapter_frame(
+                self.identifier(0x21), self.args.mode != "standard", payload
+            )
+            + "\r"
+        ).encode("ascii")
+        self.serial.write(request)
         self.serial.flush()
         deadline = time.monotonic() + self.args.timeout
-        while time.monotonic() < deadline:
+        retries = 2 if word is None else 0
+        while True:
+            if time.monotonic() >= deadline:
+                if not retries:
+                    break
+                # A delayed reply still belongs to this same read; never retry writes.
+                retries -= 1
+                self.serial.write(request)
+                self.serial.flush()
+                deadline = time.monotonic() + self.args.timeout
             frames = self.pump()
-            self.rejected()
+            if 7 in self.tokens and word is None and retries:
+                self.tokens.clear()
+                # Drain traffic for 100 ms before retrying a rejected read.
+                deadline = min(deadline, time.monotonic() + 0.1)
+                continue
+            self.rejected(
+                f"{'write' if word is not None else 'read'} parameter {address}"
+            )
             for identifier, extended, data in frames:
                 if (
                     identifier != self.identifier(0x22)
@@ -644,8 +670,8 @@ class Candapter:
                             f"inverter rejected write to parameter {address}"
                         )
                     return value
-                if success == 0:
-                    return value
+                # Spec defines byte 2 only for writes; ignore it on reads.
+                return value
         self.tainted = True
         raise TimeoutError(
             f"parameter {address} timed out; reconnect required (writes are never retried)"
@@ -864,7 +890,7 @@ class Worker(threading.Thread):
             f"Read complete: {len(addresses) - failed} values, {failed} unsupported",
         )
 
-    def apply(self, changes):
+    def apply(self, changes, *, refresh=True):
         adapter = self.adapter
         if adapter is None:
             raise RuntimeError("not connected; press c to reconnect")
@@ -920,9 +946,10 @@ class Worker(threading.Thread):
                     raise
                 verified.append(address)
                 self.emit("verified", address, desired)
-                if address == 150:
+                if address == 150 and refresh:
                     self.scan([p.address for p in PARAMETERS])
-            self.scan([p.address for p in PARAMETERS])
+            if refresh:
+                self.scan([p.address for p in PARAMETERS])
         except Exception as error:
             failure = str(error)
             raise
@@ -944,19 +971,24 @@ class Worker(threading.Thread):
                 }
                 self.emit("restart", restart, connection)
 
-    def connect(self):
+    def connect(self, *, scan=True):
         self.disconnect()
         if self.serial_factory is None:
             import serial
 
             self.serial_factory = serial.Serial
         port = self.serial_factory(
-            self.args.port, SERIAL_BAUD, timeout=0.02, write_timeout=self.args.timeout
+            self.args.port,
+            SERIAL_BAUD,
+            timeout=0.002,
+            write_timeout=self.args.timeout,
+            exclusive=True,
         )
         self.adapter = Candapter(port, self.args)
         self.adapter.open()
         self.emit("connected", True)
-        self.scan([p.address for p in PARAMETERS])
+        if scan:
+            self.scan([p.address for p in PARAMETERS])
 
     def disconnect(self):
         if self.adapter is not None:
@@ -972,7 +1004,7 @@ class Worker(threading.Thread):
         try:
             while not self.stop.is_set():
                 try:
-                    kind, data = self.jobs.get(timeout=0.02)
+                    kind, data = self.jobs.get(timeout=0.002)
                 except queue.Empty:
                     if self.adapter:
                         try:
@@ -985,27 +1017,31 @@ class Worker(threading.Thread):
                                 self.adapter.firmware,
                             )
                         except Exception as error:
-                            self.emit("message", str(error))
                             self.disconnect()
+                            self.emit("message", str(error))
                     continue
                 self.emit("busy", True)
                 try:
                     if kind == "connect":
-                        self.connect()
+                        self.connect(scan=False)
+                        self.emit(
+                            "message",
+                            "Connected; r reads the selected value, R reads all",
+                        )
                     elif self.adapter is None:
                         raise RuntimeError("not connected; press c to reconnect")
                     elif kind == "read":
                         self.scan(data)
                     elif kind == "apply":
-                        self.apply(data)
+                        self.apply(data, refresh=len(data) > 1)
                 except Exception as error:
-                    self.emit("message", str(error))
                     if self.adapter is not None and (
                         kind == "connect"
                         or self.adapter.tainted
                         or isinstance(error, OSError)
                     ):
                         self.disconnect()
+                    self.emit("message", str(error))
                 finally:
                     self.cancel.clear()
                     self.emit("busy", False)
@@ -1108,6 +1144,7 @@ HELP = [
     "/: search names, aliases, or addresses | n/N: next/previous match",
     "Enter/i: stage an edit; Ctrl-r switches engineering/raw entry",
     "r: reread selected | R: read all | u: unstage selected",
+    "Connect does not scan; use r to read a value before editing it.",
     "w: review diff, then type WRITE to apply and verify sequentially",
     "e: export observed EEPROM to JSON | o: preview/import JSON or RMS text",
     "c: reconnect using CLI settings | Esc: cancel scan/batch between transactions",
@@ -1410,12 +1447,6 @@ class TUI:
                         raise ValueError("no staged changes")
                     if not self.connected:
                         raise ValueError("not connected")
-                    current = {
-                        a: o.word
-                        for a, o in self.observations.items()
-                        if o.word is not None
-                    }
-                    validate_changes(self.staged, current, self.worker.args)
                     lines = [
                         f"{a}: {BY_ADDRESS[a].name}: {BY_ADDRESS[a].display(old)} -> {BY_ADDRESS[a].display(new)} (0x{old:04X} -> 0x{new:04X})"
                         for a, (old, new) in sorted(self.staged.items())
@@ -1492,6 +1523,10 @@ class TUI:
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("action", nargs="?", choices=("read", "write"))
+    parser.add_argument("address", nargs="?", type=lambda value: int(value, 0))
+    parser.add_argument("value", nargs="?", help="engineering value to write")
+    parser.add_argument("--raw", action="store_true", help="write a raw EEPROM word")
     parser.add_argument("--port", default=DEFAULT_PORT)
     parser.add_argument(
         "--bitrate", type=int, choices=SPEED_CODES, default=500, help="CAN kbit/s"
@@ -1501,7 +1536,7 @@ def parse_args(argv=None):
         "--mode", choices=("standard", "extended", "j1939"), default="standard"
     )
     parser.add_argument(
-        "--timeout", type=float, default=1.0, help="response deadline in seconds"
+        "--timeout", type=float, default=5.0, help="response deadline in seconds"
     )
     parser.add_argument(
         "--freshness",
@@ -1509,17 +1544,83 @@ def parse_args(argv=None):
         default=1.0,
         help="maximum disabled-state telemetry age in seconds",
     )
+    parser.add_argument(
+        "--request-gap",
+        type=float,
+        default=0.1,
+        help="receive-drain interval before each parameter request in seconds",
+    )
     args = parser.parse_args(argv)
+    if args.action is None:
+        if args.address is not None or args.value is not None or args.raw:
+            parser.error("address, value and --raw require a read or write command")
+    else:
+        if args.address not in BY_ADDRESS:
+            parser.error("address must be a documented EEPROM parameter")
+        if args.action == "read" and (args.value is not None or args.raw):
+            parser.error("read accepts only an address")
+        if args.action == "write":
+            if args.value is None:
+                parser.error("write requires an address and value")
+            try:
+                args.word = BY_ADDRESS[args.address].parse(args.value, raw=args.raw)
+            except ValueError as error:
+                parser.error(str(error))
     maximum = {"standard": 0x7C0, "extended": 0xFFC0, "j1939": 0xC0}[args.mode]
     if not 0 <= args.base <= maximum:
         parser.error(f"base must be between 0 and 0x{maximum:X}")
     if not 0 < args.timeout < float("inf") or not 0 < args.freshness < float("inf"):
         parser.error("timeout and freshness must be finite and positive")
+    if not 0 <= args.request_gap < float("inf"):
+        parser.error("request-gap must be finite and nonnegative")
     return args
+
+
+def run_single(args, serial_factory=None):
+    worker = Worker(args, serial_factory=serial_factory)
+    parameter = BY_ADDRESS[args.address]
+    try:
+        worker.connect(scan=False)
+        current = worker.read(args.address)
+        print(
+            f"{parameter.address} {parameter.name}: {parameter.display(current)}; raw {current} (0x{current:04X})"
+        )
+        if args.action == "write":
+            if args.word == current:
+                print("Already matches; no write needed.")
+                return
+            print(
+                f"Writing {parameter.display(args.word)}; raw {args.word} (0x{args.word:04X})",
+                flush=True,
+            )
+            worker.apply({args.address: (current, args.word)}, refresh=False)
+            print("Write verified by readback.")
+            if args.address not in IMMEDIATE:
+                print("Power cycle required for the new setting to take effect.")
+            if args.address == 150:
+                print(
+                    "Motor-type changes can reset flux/gamma; reread those parameters."
+                )
+            if args.address in COMMUNICATION:
+                settings = next(e[2] for e in worker.events.queue if e[0] == "restart")
+                print(
+                    f"After power cycle, connect with --base 0x{settings['base']:X} --mode {settings['mode']} --bitrate {settings['bitrate']}"
+                )
+    finally:
+        worker.disconnect()
+        for event in worker.events.queue:
+            if event[0] == "message" and event[1].startswith("CAN cleanup:"):
+                print(event[1], file=sys.stderr)
 
 
 def main():
     args = parse_args()
+    if args.action:
+        try:
+            run_single(args)
+        except (ValueError, RuntimeError, OSError) as error:
+            raise SystemExit(str(error)) from error
+        return
     worker = Worker(args)
     worker.start()
     try:
